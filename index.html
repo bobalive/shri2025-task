@@ -263,32 +263,7 @@
         const initedRef = React.useRef(false);
         const [activeTab, setActiveTab] = React.useState("");
         const [hasRightScroll, setHasRightScroll] = React.useState(false);
-        const [page, setPage] = React.useState(1);
-        React.useEffect(() => {
-          const scroller = ref.current.querySelector(
-            ".section__panel:not(.section__panel_hidden)"
-          );
-          if (!scroller) {
-            return;
-          }
-          let timeout = null;
-          scroller.addEventListener("scroll", () => {
-            if (
-              scroller.scrollLeft + scroller.clientWidth >=
-              scroller.scrollWidth
-            ) {
-              if (timeout) {
-                clearTimeout(timeout);
-              }
-              timeout = setTimeout(() => {
-                setPage(page + 1);
-              }, 100);
-            }
-          });
-          return () => {
-            scroller.removeEventListener("scroll", () => {});
-          };
-        });
+
         React.useEffect(() => {
           if (!activeTab && !initedRef.current) {
             initedRef.current = true;
@@ -477,11 +452,9 @@
                     aria-labelledby={`tab_${key}`}
                   >
                     <ul className="section__panel-list">
-                      {TABS[key].items
-                        .slice(0, page * 10)
-                        .map((item, index) => (
-                          <Event key={index} {...item} onSize={onSize} />
-                        ))}
+                      {TABS[key].items.map((item, index) => (
+                        <Event key={index} {...item} onSize={onSize} />
+                      ))}
                     </ul>
                   </div>
                 ))}
