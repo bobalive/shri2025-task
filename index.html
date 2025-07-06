@@ -95,20 +95,8 @@
       }
 
       function Event(props) {
-        const ref = React.useRef();
-
-        const { onSize, isVisible } = props;
-
-        React.useEffect(() => {
-          const width = ref.current.offsetWidth;
-          const height = ref.current.offsetHeight;
-          if (onSize && isVisible) {
-            onSize({ width, height });
-          }
-        }, [isVisible]);
-
         return (
-          <li ref={ref} className={"event" + (props.slim ? " event_slim" : "")}>
+          <li className={"event" + (props.slim ? " event_slim" : "")}>
             <button className="event__button">
               <span
                 className={`event__icon event__icon_${props.icon}`}
@@ -273,26 +261,58 @@
         const onSelectInput = (event) => {
           setActiveTab(event.target.value);
         };
-        React.useEffect(() => {
-          const scroll = ref.current.querySelector(".section__panel-list");
-          const newHasRightScroll =
-            ref.current.offsetWidth < scroll.scrollWidth;
-          if (newHasRightScroll !== hasRightScroll) {
-            setHasRightScroll(newHasRightScroll);
-          }
-        }, [activeTab, hasRightScroll, setHasRightScroll]);
 
-        const onArrowCLick = () => {
-          const scroller = ref.current.querySelector(
+        // Cache DOM elements to avoid repeated queries
+        const panelListRef = React.useRef(null);
+
+        // Memoize the arrow click handler
+        const onArrowClick = React.useCallback(() => {
+          const activePanel = ref.current?.querySelector(
             ".section__panel:not(.section__panel_hidden)"
           );
-          if (scroller) {
-            scroller.scrollTo({
-              left: scroller.scrollLeft + 400,
+          if (!activePanel) return;
+
+          const scrollDistance = Math.min(
+            400,
+            activePanel.scrollWidth -
+              activePanel.scrollLeft -
+              activePanel.clientWidth
+          );
+
+          if (scrollDistance > 0) {
+            activePanel.scrollTo({
+              left: activePanel.scrollLeft + scrollDistance,
               behavior: "smooth",
             });
           }
-        };
+        }, []);
+
+        // Optimize scroll detection with useEffect
+        React.useEffect(() => {
+          if (!ref.current || !panelListRef.current) {
+            setHasRightScroll(false);
+            return;
+          }
+
+          // Use requestAnimationFrame to avoid layout thrashing
+          requestAnimationFrame(() => {
+            const activePanel = ref.current.querySelector(
+              ".section__panel:not(.section__panel_hidden)"
+            );
+            if (!activePanel) {
+              setHasRightScroll(false);
+              return;
+            }
+
+            const containerWidth = activePanel.offsetWidth;
+            const scrollWidth = panelListRef.current.scrollWidth;
+            const newHasRightScroll = containerWidth < scrollWidth;
+
+            if (newHasRightScroll !== hasRightScroll) {
+              setHasRightScroll(newHasRightScroll);
+            }
+          });
+        }, [activeTab, hasRightScroll, setHasRightScroll]);
 
         return (
           <main className="main">
@@ -443,7 +463,10 @@
                     id={`panel_${key}`}
                     aria-labelledby={`tab_${key}`}
                   >
-                    <ul className="section__panel-list">
+                    <ul
+                      className="section__panel-list"
+                      ref={key === activeTab ? panelListRef : null}
+                    >
                       {TABS[key].items.map((item, index) => (
                         <Event
                           key={index}
@@ -455,7 +478,7 @@
                   </div>
                 ))}
                 {hasRightScroll && (
-                  <div className="section__arrow" onClick={onArrowCLick}></div>
+                  <div className="section__arrow" onClick={onArrowClick}></div>
                 )}
               </div>
             </section>
