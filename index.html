@@ -97,15 +97,15 @@
       function Event(props) {
         const ref = React.useRef();
 
-        const { onSize } = props;
+        const { onSize, isVisible } = props;
 
         React.useEffect(() => {
           const width = ref.current.offsetWidth;
           const height = ref.current.offsetHeight;
-          if (onSize) {
+          if (onSize && isVisible) {
             onSize({ width, height });
           }
-        });
+        }, [isVisible]);
 
         return (
           <li ref={ref} className={"event" + (props.slim ? " event_slim" : "")}>
@@ -271,26 +271,32 @@
               new URLSearchParams(location.search).get("tab") || "all"
             );
           }
-        });
+        }, []);
 
         const onSelectInput = (event) => {
           setActiveTab(event.target.value);
+          sizes.current = [];
         };
 
-        let sizes = [];
+        let sizes = React.useRef([]);
         const onSize = (size) => {
-          sizes = [...sizes, size];
+          sizes.current = [...sizes.current, size];
         };
-
         React.useEffect(() => {
-          const sumWidth = sizes.reduce((acc, item) => acc + item.width, 0);
-          const sumHeight = sizes.reduce((acc, item) => acc + item.height, 0);
+          const sumWidth = sizes.current.reduce(
+            (acc, item) => acc + item.width,
+            0
+          );
+          const sumHeight = sizes.current.reduce(
+            (acc, item) => acc + item.height,
+            0
+          );
 
           const newHasRightScroll = sumWidth > ref.current.offsetWidth;
           if (newHasRightScroll !== hasRightScroll) {
             setHasRightScroll(newHasRightScroll);
           }
-        });
+        }, [activeTab, hasRightScroll, sizes, setHasRightScroll]);
 
         const onArrowCLick = () => {
           const scroller = ref.current.querySelector(
@@ -430,7 +436,10 @@
                       }
                       id={`tab_${key}`}
                       aria-controls={`panel_${key}`}
-                      onClick={() => setActiveTab(key)}
+                      onClick={() => {
+                        setActiveTab(key);
+                        sizes.current = [];
+                      }}
                     >
                       {TABS[key].title}
                     </li>
@@ -453,7 +462,16 @@
                   >
                     <ul className="section__panel-list">
                       {TABS[key].items.map((item, index) => (
-                        <Event key={index} {...item} onSize={onSize} />
+                        <Event
+                          key={index}
+                          {...item}
+                          onSize={(data) => {
+                            if (key == activeTab || !activeTab) {
+                              onSize(data);
+                            }
+                          }}
+                          isVisible={key === activeTab}
+                        />
                       ))}
                     </ul>
                   </div>
